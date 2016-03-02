@@ -41,13 +41,14 @@
 
   // Packaging:
   var oldInfinity = window.infinity,
-      infinity = window.infinity = {},
-      config = infinity.config = {};
+    infinity = window.infinity = {},
+    config = infinity.config = {};
 
   // Constants:
-  var PAGE_ID_ATTRIBUTE = 'data-infinity-pageid',
-      NUM_BUFFER_PAGES = 1,
-      PAGES_ONSCREEN = NUM_BUFFER_PAGES * 2 + 1;
+  var DEBUG = false,
+    PAGE_ID_ATTRIBUTE = 'data-infinity-pageid',
+    NUM_BUFFER_PAGES = 1,
+    PAGES_ONSCREEN = NUM_BUFFER_PAGES * 2 + 1;
 
   // Config:
   config.PAGE_TO_SCREEN_RATIO = 3;
@@ -99,7 +100,7 @@
 
   function initBuffer(listView) {
     listView._$buffer = blankDiv()
-                        .prependTo(listView.$el);
+      .prependTo(listView.$el);
   }
 
 
@@ -110,8 +111,8 @@
 
   function updateBuffer(listView) {
     var firstPage,
-        pages = listView.pages,
-        $buffer = listView._$buffer;
+      pages = listView.pages,
+      $buffer = listView._$buffer;
 
     if(pages.length > 0) {
       firstPage = pages[listView.startIndex];
@@ -149,8 +150,8 @@
     if(!obj || !obj.length) return null;
 
     var lastPage,
-        item = convertToItem(this, obj),
-        pages = this.pages;
+      item = convertToItem(this, obj),
+      pages = this.pages;
 
     updateListViewHeight(this, item.height)
 
@@ -167,7 +168,7 @@
     return item;
   };
 
-   // ### append
+  // ### append
   //
   // Appends a jQuery element or a ListItem to the ListView.
   //
@@ -212,7 +213,7 @@
 
     // WARNING: this will always break for prepends. Once support gets added for
     // prepends, change this.
-      listView.$el.append(listItem.$el);
+    listView.$el.append(listItem.$el);
     updateCoords(listItem, listView.height);
     listItem.$el.remove();
   }
@@ -228,9 +229,9 @@
 
   function insertPagesInView(listView) {
     var index, length, curr,
-        pages = listView.pages,
-        inserted = false,
-        inOrder = true;
+      pages = listView.pages,
+      inserted = false,
+      inOrder = true;
     index = listView.startIndex;
     length = Math.min(index + PAGES_ONSCREEN, pages.length);
 
@@ -264,11 +265,11 @@
 
   function updateStartIndex(listView) {
     var index, length, pages, lastIndex, nextLastIndex,
-        startIndex = listView.startIndex,
-        viewTop = $window.scrollTop() - listView.top,
-        viewHeight = $window.height(),
-        viewBottom = viewTop + viewHeight,
-        nextIndex = startIndexWithinRange(listView, viewTop, viewBottom);
+      startIndex = listView.startIndex,
+      viewTop = $window.scrollTop() - listView.top,
+      viewHeight = $window.height(),
+      viewBottom = viewTop + viewHeight,
+      nextIndex = startIndexWithinRange(listView, viewTop, viewBottom);
 
     if( nextIndex < 0 || nextIndex === startIndex) return startIndex;
 
@@ -333,6 +334,99 @@
     repartition(listView);
   }
 
+  var visualDebug = (function() {
+
+    if (DEBUG === false ) {
+      return function() {};
+    }
+
+    var counterFrames = 0;
+    var initialHeight = 0;
+    var colors = [ 'red', 'green', 'blue', 'yellow', 'purple' ];
+
+    $(document.body).on('click', '.infinity-debug-diagram', function() {
+
+      var $diagram;
+      counterFrames--;
+
+      $(this)
+        .nextAll('.infinity-debug-diagram')
+        .each(function () {
+
+          $diagram = $(this);
+          $diagram.css({
+            left: parseInt($diagram.css('left'), 10) - $diagram.width()
+          });
+        })
+        .end()
+        .remove();
+    });
+
+    return function (listView, skip) {
+
+      if (counterFrames > 1 && skip === true) {
+        return;
+      }
+
+      counterFrames++;
+
+      var pages = listView.pages;
+      var percent;
+      var containerHeight = (initialHeight === 0) ? '90%' : 0.9 * (listView.height / initialHeight * 100) + '%';
+      var $container = $('<div>')
+        .addClass('infinity-debug-diagram')
+        .css({
+          position: 'fixed',
+          top: '5%',
+          bottom: '5%',
+          left: (counterFrames * 100) + 20,
+          width: '100px',
+          height: containerHeight,
+          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+          zIndex: 9999,
+          border: '1px solid red',
+          textAlign: 'right',
+          fontSize: '20px',
+          color: 'red',
+          overflow: 'visible'
+        });
+
+      if (initialHeight === 0) {
+        initialHeight = listView.height;
+      }
+
+      $container.appendTo(document.body);
+
+      pages.forEach(function(value, index) {
+
+        $('<div>')
+          .css({
+            position: 'absolute',
+            backgroundColor: colors[ index ],
+            width: '5px',
+            left: 10 * index,
+            top: (value.top / listView.height  * 100) + '%',
+            height: (value.height / listView.height * 100) + '%'
+          })
+          .appendTo($container);
+
+        $('<div>')
+          .css({
+            position: 'absolute',
+            backgroundColor: colors[ index ],
+            width: '5px',
+            left: 5 + 10 * index,
+            opacity: 0.5,
+            bottom: 100 - (value.bottom / listView.height * 100) * 100 + '%',
+            height: (value.height / listView.height * 100) + '%'
+          })
+          .appendTo($container);
+
+      });
+    }
+
+  }());
+
 
   // ### repartition
   //
@@ -341,9 +435,10 @@
 
   function repartition(listView) {
     var currPage, newPage, index, length, itemIndex, pageLength, currItems, currItem,
-        nextItem,
-        pages = listView.pages,
-        newPages = [];
+      nextItem,
+      currentHeightOffset = 0,
+      pages = listView.pages,
+      newPages = [];
 
     newPage = new Page(listView);
     newPages.push(newPage);
@@ -352,8 +447,15 @@
       currPage = pages[index];
       currItems = currPage.items;
       for(itemIndex = 0, pageLength = currItems.length; itemIndex < pageLength; itemIndex++) {
+
         currItem = currItems[itemIndex];
         nextItem = currItem.clone();
+
+        // Repartition now resets all coordinates for consistency.
+        nextItem.top = currentHeightOffset;
+        currentHeightOffset = currentHeightOffset + nextItem.height;
+        nextItem.bottom = currentHeightOffset;
+
         if(newPage.hasVacancy()) {
           newPage.append(nextItem);
         } else {
@@ -407,8 +509,8 @@
     items = [];
     findObj.each(function() {
       var pageId, page, pageItems, index, length, currItem,
-          $itemEl = $(this).parentsUntil('[' + PAGE_ID_ATTRIBUTE + ']').andSelf().first(),
-          $pageEl = $itemEl.parent();
+        $itemEl = $(this).parentsUntil('[' + PAGE_ID_ATTRIBUTE + ']').andSelf().first(),
+        $pageEl = $itemEl.parent();
 
 
       pageId = $pageEl.attr(PAGE_ID_ATTRIBUTE);
@@ -461,13 +563,13 @@
 
   function indexWithinRange(listView, top, bottom) {
     var index, length, curr, startIndex, midpoint, diff, prevDiff,
-        pages = listView.pages,
-        rangeMidpoint = top + (bottom - top)/2;
+      pages = listView.pages,
+      rangeMidpoint = top + (bottom - top)/2;
 
     // Start looking at the index of the page last contained by the screen --
     // not the first page in the onscreen pages
     startIndex = Math.min(listView.startIndex + NUM_BUFFER_PAGES,
-                          pages.length - 1);
+      pages.length - 1);
 
     if(pages.length <= 0) return -1;
 
@@ -512,7 +614,7 @@
 
   ListView.prototype.cleanup = function() {
     var pages = this.pages,
-        page;
+      page;
     DOMEvent.detach(this);
     while(page = pages.pop()) {
       page.cleanup();
@@ -529,9 +631,9 @@
 
   var DOMEvent = (function() {
     var eventIsBound = false,
-        scrollScheduled = false,
-        resizeTimeout = null,
-        boundViews = [];
+      scrollScheduled = false,
+      resizeTimeout = null,
+      boundViews = [];
 
 
     // ### scrollHandler
@@ -677,7 +779,9 @@
     var items = this.items;
 
     // Recompute coords, sizing.
-    if(items.length === 0) this.top = item.top;
+    if(items.length === 0) {
+      this.top = item.top;
+    }
     this.bottom = item.bottom;
     this.width = this.width > item.width ? this.width : item.width;
     this.height = this.bottom - this.top;
@@ -712,7 +816,8 @@
     item.parent = this;
 
     afterItem.$el.after(item.$el);
-
+    visualDebug(this.parent);
+    repartition(this.parent);
     this.lazyloaded = false;
   };
 
@@ -803,7 +908,7 @@
 
   Page.prototype.cleanup = function() {
     var items = this.items,
-        item;
+      item;
 
     this.parent = null;
     PageRegistry.remove(this);
@@ -824,7 +929,7 @@
 
   Page.prototype.lazyload = function(callback) {
     var $el = this.$el,
-        index, length;
+      index, length;
     if (!this.lazyloaded) {
       for (index = 0, length = $el.length; index < length; index++) {
         callback.call($el[index], $el[index]);
@@ -861,8 +966,9 @@
   // Removes a given ListItem from the given Page.
 
   function removeItemFromPage(item, page) {
+    var listView = page.parent;
     var index, length, foundIndex,
-        items = page.items;
+      items = page.items;
     for(index = 0, length = items.length; index < length; index++) {
       if(items[index] === item) {
         foundIndex = index;
@@ -871,15 +977,16 @@
     }
 
     if(foundIndex == null) return false;
-
+    visualDebug(listView, true);
     items.splice(foundIndex, 1);
 
-    updateListViewHeight(page.parent, -1 * item.height)
+    updateListViewHeight(page.parent, -1 * item.height);
 
     page.bottom -= item.height;
     page.height = page.bottom - page.top;
-    if(page.hasVacancy()) tooSmall(page.parent, page);
 
+    if(page.hasVacancy()) tooSmall(page.parent, page);
+    visualDebug(listView);
     return true;
   }
 
