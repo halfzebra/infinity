@@ -39,6 +39,8 @@
   // Cached objects
   var $window = $(window);
 
+  var windowHeight = $(window).height();
+
   // Packaging:
   var oldInfinity = window.infinity,
     infinity = window.infinity = {},
@@ -129,7 +131,14 @@
 
   function updateListViewHeight(listView, deltaHeight) {
     listView.height += deltaHeight;
-    listView.$el.height(listView.height);
+    if (listView.heightUpdate !== null) {
+      clearTimeout(listView.heightUpdate);
+    }
+
+    listView.heightUpdate = setTimeout(function () {
+      listView.$el.height(listView.height);
+      listView.heightUpdate = null;
+    }, 300);
   }
 
   // ListView manipulation
@@ -213,9 +222,9 @@
 
     // WARNING: this will always break for prepends. Once support gets added for
     // prepends, change this.
-    listView.$el.append(listItem.$el);
+    // listView.$el.append(listItem.$el);
     updateCoords(listItem, listView.height);
-    listItem.$el.remove();
+    // listItem.$el.remove();
   }
 
 
@@ -850,7 +859,7 @@
   // Returns false if the Page is at max capacity; false otherwise.
 
   Page.prototype.hasVacancy = function() {
-    return this.height < $window.height() * config.PAGE_TO_SCREEN_RATIO;
+    return this.height < windowHeight * config.PAGE_TO_SCREEN_RATIO;
   };
 
 
@@ -1058,12 +1067,13 @@
   //  - `yOffset`: the y-offset of the ListItem from its ListView parent.
 
   function updateCoords(listItem, yOffset) {
-    var $el = listItem.$el;
+    //var $el = listItem.$el;
 
     listItem.top = yOffset;
-    listItem.height = $el.outerHeight(true);
+    //listItem.height = $el.outerHeight(true);
+    listItem.height = 71;
     listItem.bottom = listItem.top + listItem.height;
-    listItem.width = $el.width();
+    //listItem.width = $el.width();
   }
 
 
