@@ -102,6 +102,7 @@
 
   function initBuffer(listView) {
     listView._$buffer = blankDiv()
+      .addClass('infinity-buffer')
       .prependTo(listView.$el);
   }
 
@@ -129,16 +130,22 @@
   //
   // Private ListView method. Updates the height of ListView by a given delta
 
-  function updateListViewHeight(listView, deltaHeight) {
+  function updateListViewHeight(listView, deltaHeight, lazy) {
     listView.height += deltaHeight;
-    if (listView.heightUpdate !== null) {
-      clearTimeout(listView.heightUpdate);
+
+    if (lazy === true) {
+      if (listView.heightUpdate !== null) {
+        clearTimeout(listView.heightUpdate);
+      }
+
+      listView.heightUpdate = setTimeout(function () {
+        listView.$el.height(listView.height);
+        listView.heightUpdate = null;
+      }, 300);
+    } else {
+      listView.$el.height(listView.height);
     }
 
-    listView.heightUpdate = setTimeout(function () {
-      listView.$el.height(listView.height);
-      listView.heightUpdate = null;
-    }, 300);
   }
 
   // ListView manipulation
