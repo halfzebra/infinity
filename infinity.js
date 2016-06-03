@@ -1078,7 +1078,8 @@
 
     listItem.top = yOffset;
     //listItem.height = $el.outerHeight(true);
-    listItem.height = 71;
+    // TODO: implement a better way to pass this.
+    listItem.height = 65; // height + border-bottom: 64 + 1
     listItem.bottom = listItem.top + listItem.height;
     //listItem.width = $el.width();
   }
